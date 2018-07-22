@@ -32,7 +32,7 @@ def deploy_pose_ren_net(dataset):
     n.data = L.Input(name="data", shape=dict(dim=[1, 1, 96, 96]))
     n.prev_pose = L.Input(name="prev_pose", shape=dict(dim=[1, point_num_*3]))
 
-    print str(n.to_proto())
+    print(str(n.to_proto()))
 
     # the base net
     n.conv0, n.relu0 = conv_relu(n.data, 16)
@@ -55,7 +55,7 @@ def deploy_pose_ren_net(dataset):
     n.relu5 = L.ReLU(n.pool3, in_place=True)
 
     # pose guided region ensemble
-    for idx in xrange(point_num_):
+    for idx in range(point_num_):
         if idx not in get_guided_joints(dataset):
             continue
         rois = 'rois_{}'.format(idx)
@@ -73,9 +73,9 @@ def deploy_pose_ren_net(dataset):
     # connect_structure_1 = [[0,1,3], [0,4,6], [0,7,9], [0,10,12], [0,13,15]]
     connect_structure_1 = get_connect_structure(dataset)
     concate_bottom_final = []
-    for idx in xrange(len(connect_structure_1)):
+    for idx in range(len(connect_structure_1)):
         concate_bottom = []
-        for jdx in xrange(len(connect_structure_1[idx])):
+        for jdx in range(len(connect_structure_1[idx])):
             drop1 = 'drop1_{}'.format(connect_structure_1[idx][jdx])
             concate_bottom.append(n[drop1])
         concate_1 = 'concate_1_{}'.format(idx)

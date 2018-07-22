@@ -36,8 +36,8 @@ class ModelPoseREN(object):
             init_proto_name, init_model_name = util.get_model(dataset, 'baseline')
             proto_name, model_name = util.get_model(dataset, 'pose_ren')
 
-        print init_proto_name, init_model_name
-        print proto_name, model_name
+        print(init_proto_name, init_model_name)
+        print(proto_name, model_name)
         self._net = caffe.Net(proto_name, caffe.TEST, weights=model_name)
         self._net_init = caffe.Net(init_proto_name, caffe.TEST, weights=init_model_name)
 
@@ -49,10 +49,16 @@ class ModelPoseREN(object):
         if centers is None:
             centers = np.zeros([batch_size, 3], dtype=np.float32)
             for idx, img in enumerate(imgs):
+                print("idx = {}, img = {}".format(idx, np.shape(img)))
                 centers[idx, :] = self._center_loader(img)
         _, channels, height, width = self._net.blobs['data'].shape
+        print("channels = {}\nheight = {}\nwidth = {}".format(channels, height, width))
         # run Init-CNN
         self._net_init.blobs['data'].reshape(batch_size, channels, height, width)
+        oldCenters = centers
+        centers = []
+        for i in range(batch_size):
+            centers.append(list(oldCenters[i]))
         for idx in range(batch_size):
             self._net_init.blobs['data'].data[idx, ...] = self._crop_image(imgs[idx], centers[idx])
         init_poses = self._net_init.forward()['fc3']
@@ -64,10 +70,11 @@ class ModelPoseREN(object):
         self._net.blobs['prev_pose'].reshape(batch_size, channels)
         for idx in range(batch_size):
             self._net.blobs['data'].data[idx, ...] = self._crop_image(imgs[idx], centers[idx])
-        for it in xrange(3):
+        for it in range(3):
             self._net.blobs['prev_pose'].data[...] = prev_pose
             poses = self._net.forward()['fc3_0']
             prev_pose = poses
+        # print("poses = {}".format(poses))
         return self._transform_pose(poses, centers)
     
     def detect_image(self, img):
@@ -81,15 +88,20 @@ class ModelPoseREN(object):
         batch_imgs = []
         batch_centers = []
         results = []
-        for idx, name in enumerate(names):
+        for idx, name in enumerate(names): 
+            # print("name = {}".format(os.path.join(base_dir, name)))
+            # print("centers.shape = {}".format(np.shape(centers)))
+            # print("centers.type = {}".format(type(centers)))
             img = util.load_image(dataset, os.path.join(base_dir, name),
                     is_flip=is_flip)
             batch_imgs.append(img)
+            # print("np.shape(img) = {}".format(np.shape(img)))
+            # print("self._center_loader(img) = {}".format(self._center_loader(img)))
             if centers is None:
                 batch_centers.append(self._center_loader(img))
             else:
-                batch_centers.append(centers[idx, :])
-
+                batch_centers.append(centers[idx])
+            # print("batch_centers = {}".format(np.shape(batch_centers)))
             if len(batch_imgs) == max_batch:
                 for line in self.detect_images(batch_imgs, batch_centers):
                     results.append(line)
@@ -103,21 +115,33 @@ class ModelPoseREN(object):
         return np.array(results)
     
     def _crop_image(self, img, center, is_debug=False):
+        # print("center = {}".format(center))
         xstart = center[0] - self._cube_size / center[2] * self._fx
+        # xstart = xstart if xstart >= 0 else 0
         xend = center[0] + self._cube_size / center[2] * self._fx
+        # xend = xend if xend <= np.shape(img)[1] else np.shape(img)[1]
         ystart = center[1] - self._cube_size / center[2] * self._fy
+        # ystart = ystart if ystart >= 0 else 0
         yend = center[1] + self._cube_size / center[2] * self._fy
-
+        # yend = yend if yend <= np.shape(img)[0] else np.shape(img)[0]
+        # print("xstart = {}, xend = {}, ystart = {}, yend = {}".format(xstart, xend, ystart, yend))
         src = [(xstart, ystart), (xstart, yend), (xend, ystart)]    
         dst = [(0, 0), (0, self._input_size - 1), (self._input_size - 1, 0)]
+        # print("src = {}\ndst = {}".format(src, dst))
         trans = cv2.getAffineTransform(np.array(src, dtype=np.float32),
                 np.array(dst, dtype=np.float32))
         res_img = cv2.warpAffine(img, trans, (self._input_size, self._input_size), None,
                 cv2.INTER_LINEAR, cv2.BORDER_CONSTANT, center[2] + self._cube_size)
+        # print("res_img = {}".format(res_img))
         res_img -= center[2]
         res_img = np.maximum(res_img, -self._cube_size)
         res_img = np.minimum(res_img, self._cube_size)
+        min = res_img.min()
+        max = res_img.max()
+        print("min = {}, max = {}".format(min,max))
         res_img /= self._cube_size
+        cv2.imwrite("tt.jpg",res_img)
+
 
         if is_debug:
             img_show = (res_img + 1) / 2;
@@ -131,7 +155,8 @@ class ModelPoseREN(object):
 
     def _transform_pose(self, poses, centers):
         res_poses = np.array(poses) * self._cube_size
-        num_joint = poses.shape[1] / 3
+        num_joint = int(poses.shape[1] / 3)
+        # print("centers = {}".format(np.shape(centers)))
         centers_tile = np.tile(centers, (num_joint, 1, 1)).transpose([1, 0, 2])
         res_poses[:, 0::3] = res_poses[:, 0::3] * self._fx / centers_tile[:, :, 2] + centers_tile[:, :, 0]
         res_poses[:, 1::3] = res_poses[:, 1::3] * self._fy / centers_tile[:, :, 2] + centers_tile[:, :, 1]

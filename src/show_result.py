@@ -26,8 +26,10 @@ def show_pose(dataset_model, dataset_image, base_dir, outputs, list_file, save_d
         with open(list_file) as f:
             names = [line.strip() for line in f]
     assert len(names) == outputs.shape[0]
-
+    print("len(names) = {}".format(len(names)))
     for idx, (name, pose) in enumerate(zip(names, outputs)):
+        print("name = {}".format(name))
+        print("pose = {}".format(pose))
         img = util.load_image(dataset_image, os.path.join(base_dir, name),
                               is_flip=is_flip)
         img = img.astype(np.float32)

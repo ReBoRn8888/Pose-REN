@@ -19,7 +19,9 @@ from enum import Enum
 def get_positions(in_file):
     with open(in_file) as f:
         positions = [list(map(float, line.strip().split())) for line in f]
-    return np.reshape(np.array(positions), (-1, len(positions[0]) / 3, 3))
+    print("np.shape(positions) = {}".format(np.shape(positions)))
+    print("len(positions[0]) = {}".format(len(positions[0])))
+    return np.reshape(np.array(positions), (-1, int(len(positions[0]) / 3), 3))
 
 
 def check_dataset(dataset):
@@ -90,9 +92,12 @@ def load_image(dataset, name, input_size=None, is_flip=False):
         print('invalid dataset: {}'.format(dataset))
         exit(-1)
     if dataset == 'icvl':
+        print("name= {}".format(name))
         img = cv2.imread(name, 2)  # depth image
+        print("np.shape(img) = {}".format(np.shape(img)))
         img[img == 0] = img.max()  # invalid pixel
         img = img.astype(float)
+        print("np.shape(img) = {}".format(np.shape(img)))
     elif dataset == 'nyu':
         img = cv2.imread(name)
         g = np.asarray(img[:, :, 1], np.int32)
@@ -117,8 +122,8 @@ def load_names(dataset):
 
 def load_centers(dataset):
     with open('{}/results/{}_center.txt'.format(os.path.join(ROOT_DIR, '..'), dataset)) as f:
-        return np.array([map(float,
-            line.strip().split()) for line in f])
+        return np.array(list([map(float,
+                    line.strip().split()) for line in f]))
 
 
 def get_sketch_setting(dataset):
@@ -219,15 +224,20 @@ def get_center(img, upper=650, lower=1):
                 count += 1
     if count:
         centers /= count
+    print("centers = {}".format(centers))
     return centers
 
 
 def get_center_fast(img, upper=650, lower=1):
     centers = np.array([0.0, 0.0, 300.0])
     flag = np.logical_and(img <= upper, img >= lower)
+    # print("flag = {}".format(np.shape(flag)))
     x = np.linspace(0, img.shape[1], img.shape[1])
     y = np.linspace(0, img.shape[0], img.shape[0])
+    # print("x = {}, y = {}".format(np.shape(x),np.shape(y)))
     xv, yv = np.meshgrid(x, y)
+    # print("xv = {}, yv = {}".format(xv[flag],yv[flag]))
+    # print("img[flag] = {}".format(img[flag]))
     centers[0] = np.mean(xv[flag])
     centers[1] = np.mean(yv[flag])
     centers[2] = np.mean(img[flag])
@@ -237,6 +247,10 @@ def get_center_fast(img, upper=650, lower=1):
         centers[0] = 0
         centers[1] = 0
         centers[2] = 300.0
+    # centers[0] = 178.54
+    # centers[1] = 138.784
+    # centers[2] = 374.72
+    print("centers = {}".format(centers))
     return centers
 
 

@@ -4,10 +4,10 @@ def combine_gt_init_label(gt_label_file, init_label_file, combined_label_file, J
     # read lables
     with open(gt_label_file, 'r') as f:
         gt_labels = f.readlines()
-    print len(gt_labels)
+    print(len(gt_labels))
     with open(init_label_file, 'r') as f:
         init_labels = f.readlines()
-    print len(init_labels)
+    print(len(init_labels))
 
     combined_poses = np.zeros((len(gt_labels), J * 3 * 2), dtype=float)
     for idx in xrange(len(gt_labels)):
